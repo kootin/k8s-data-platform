@@ -5,16 +5,20 @@ source "$(dirname "$0")/lib.sh"
 require kubectl python3
 
 day="${1:-$(python3 -c 'import datetime; print(datetime.date.today() - datetime.timedelta(days=3))')}"
+# Airflow allows one run per logical date, so each smoke run gets the current
+# time of day (like the UI's Trigger button). The tasks use ds, so they still
+# load $day, and re-running a day doesn't fail with DagRunAlreadyExists.
+logical_date="${day}T$(date -u +%H:%M:%S)+00:00"
 run_id="smoke__${day}__$(date +%s)"
 sched=(kubectl -n "$NAMESPACE" exec deploy/airflow-scheduler -c scheduler --)
 
 log "triggering nyc311_daily for $day (run $run_id)"
 "${sched[@]}" airflow dags unpause nyc311_daily >/dev/null
-"${sched[@]}" airflow dags trigger nyc311_daily -e "${day}T00:00:00+00:00" -r "$run_id" >/dev/null
+"${sched[@]}" airflow dags trigger nyc311_daily -e "$logical_date" -r "$run_id" >/dev/null
 
 state=""
 for _ in $(seq 1 90); do
-  state="$("${sched[@]}" airflow dags state nyc311_daily "${day}T00:00:00+00:00" 2>/dev/null | tail -1 || true)"
+  state="$("${sched[@]}" airflow dags state nyc311_daily "$logical_date" 2>/dev/null | tail -1 || true)"
   case "$state" in
     success) break ;;
     failed)
