@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-scheduler
+spec:
+  clusterIP: None
+  selector:
+    app: airflow-scheduler
+  ports:
+    - name: logs
+      port: 8793
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: airflow-scheduler
+  template:
+    metadata:
+      labels:
+        app: airflow-scheduler
+    spec:
+      initContainers:
+        # Wait for Postgres, apply Airflow's schema migrations, and make sure
+        # the admin user exists. Safe to run on every restart.
+        - name: db-migrate
+          image: k8s-data-platform/airflow
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-c"]
+          args:
+            - |
+              set -euo pipefail
+              airflow db check --retry 30 --retry-delay 2
+              airflow db migrate
+              airflow users create --role Admin --username admin \
+                --password "$AIRFLOW_ADMIN_PASSWORD" --firstname Admin \
+                --lastname User --email admin@example.com \
+                || echo "admin user already exists"
+          envFrom: &airflowEnv
+            - configMapRef: {name: airflow-env}
+            - configMapRef: {name: platform-config}
+          env: &airflowSecrets
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef: {name: platform-credentials, key: AIRFLOW_DB_CONN}
+            - name: AIRFLOW__WEBSERVER__SECRET_KEY
+              valueFrom:
+                secretKeyRef: {name: platform-credentials, key: AIRFLOW_SECRET_KEY}
+            - name: WAREHOUSE_DB_URL
+              valueFrom:
+                secretKeyRef: {name: platform-credentials, key: WAREHOUSE_DB_URL}
+            - name: AIRFLOW_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: platform-credentials, key: AIRFLOW_ADMIN_PASSWORD}
+      containers:
+        - name: scheduler
+          image: k8s-data-platform/airflow
+          imagePullPolicy: IfNotPresent
+          args: ["scheduler"]
+          envFrom: *airflowEnv
+          env: *airflowSecrets
+          ports:
+            - containerPort: 8793
+              name: logs
+            - containerPort: 8974
+              name: health
+          resources:
+            requests: {cpu: 250m, memory: 1Gi}
+            limits: {cpu: "2", memory: 3Gi}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8974
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5

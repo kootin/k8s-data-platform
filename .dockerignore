@@ -1,0 +1,6 @@
+.git
+terraform
+jenkins
+.venv
+**/__pycache__
+**/.pytest_cache

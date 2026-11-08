@@ -1,0 +1,2 @@
+# Runtime deps on top of the apache/airflow 2.10.3 image (which already has
+# pandas, pyarrow, boto3, psycopg2 and requests).

@@ -1,0 +1,38 @@
+# Jenkins Configuration as Code: admin user + the pipeline job, no clicking.
+jenkins:
+  systemMessage: "k8s-data-platform CI/CD (local)"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: admin
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8081/"
+
+jobs:
+  - script: |
+      pipelineJob('k8s-data-platform') {
+        description('Lint, test, build, deploy to kind, smoke test')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote { url('${REPO_URL}') }
+                branch('${REPO_BRANCH}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+        triggers {
+          scm('H/5 * * * *')
+        }
+      }

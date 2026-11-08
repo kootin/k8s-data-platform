@@ -1,0 +1,19 @@
+# Settings shared by every Airflow container.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airflow-env
+data:
+  AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+  # Pods are reached by IP, not hostname, so the UI can fetch task logs
+  # from the scheduler pod.
+  AIRFLOW__CORE__HOSTNAME_CALLABLE: airflow.utils.net.get_host_ip_address
+  AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "False"
+  AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "True"
+  # Where the 311 extract comes from: "api" (NYC Open Data) or "sample"
+  # (bundled offline sample, for demos without internet).
+  NYC311_SOURCE: api
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
