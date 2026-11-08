@@ -1,0 +1,26 @@
+# Local Jenkins on http://localhost:8081 (user admin, password from
+# JENKINS_ADMIN_PASSWORD, default "admin"). It joins the "kind" Docker network
+# so builds can reach the cluster, which means `make infra` must run first.
+services:
+  jenkins:
+    build: .
+    container_name: k8s-data-platform-jenkins
+    user: root
+    ports:
+      - "8081:8080"
+    environment:
+      JENKINS_ADMIN_PASSWORD: ${JENKINS_ADMIN_PASSWORD:-admin}
+      REPO_URL: ${REPO_URL:-https://github.com/kootin/k8s-data-platform.git}
+      REPO_BRANCH: ${REPO_BRANCH:-*/main}
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - kind
+
+networks:
+  kind:
+    external: true
+
+volumes:
+  jenkins_home: {}

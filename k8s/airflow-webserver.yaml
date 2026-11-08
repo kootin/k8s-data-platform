@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-webserver
+spec:
+  type: NodePort
+  selector:
+    app: airflow-webserver
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow-webserver
+  template:
+    metadata:
+      labels:
+        app: airflow-webserver
+    spec:
+      initContainers:
+        # The scheduler's init container runs the migrations; just wait for them.
+        - name: wait-for-migrations
+          image: k8s-data-platform/airflow
+          imagePullPolicy: IfNotPresent
+          command: ["airflow", "db", "check-migrations", "--migration-wait-timeout", "300"]
+          envFrom: &airflowEnv
+            - configMapRef: {name: airflow-env}
+            - configMapRef: {name: platform-config}
+          env: &airflowSecrets
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef: {name: platform-credentials, key: AIRFLOW_DB_CONN}
+            - name: AIRFLOW__WEBSERVER__SECRET_KEY
+              valueFrom:
+                secretKeyRef: {name: platform-credentials, key: AIRFLOW_SECRET_KEY}
+      containers:
+        - name: webserver
+          image: k8s-data-platform/airflow
+          imagePullPolicy: IfNotPresent
+          args: ["webserver"]
+          envFrom: *airflowEnv
+          env: *airflowSecrets
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: {cpu: 250m, memory: 1Gi}
+            limits: {cpu: "2", memory: 2Gi}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
