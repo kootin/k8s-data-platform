@@ -43,8 +43,9 @@ flowchart LR
 - `brew install kind kubectl terraform`
 - Python 3.11+ (only for running the tests outside Docker)
 
-Ports 8080 (Airflow), 4566 (S3) and 5432 (Postgres) need to be free; change
-them in `terraform/variables.tf` if not.
+Ports 8080 (Airflow), 4566 (S3) and 5432 (Postgres) need to be free. If one
+is taken, pick another and keep it exported for every `make` run, e.g.
+`export TF_VAR_airflow_host_port=8090` (all three are in `terraform/variables.tf`).
 
 ## Run it
 

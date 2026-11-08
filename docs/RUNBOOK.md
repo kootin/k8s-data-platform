@@ -18,8 +18,10 @@ alias kc='kubectl -n data-platform'
 ### `make infra` fails creating the cluster
 - **Docker not running**: `docker info` errors. Start Docker Desktop.
 - **Port already allocated** (8080, 4566 or 5432): find the owner with
-  `lsof -nP -iTCP:8080 -sTCP:LISTEN`, stop it, or change the port in
-  `terraform/variables.tf` (e.g. `-var airflow_host_port=8090`).
+  `lsof -nP -iTCP:8080 -sTCP:LISTEN`, stop it, or move the platform:
+  `export TF_VAR_airflow_host_port=8090` (variables for all three ports are in
+  `terraform/variables.tf`), then `make up`. Keep it exported for later runs;
+  a changed port makes Terraform recreate the cluster.
 - **Cluster already exists from an earlier run** without Terraform state:
   `kind delete cluster --name k8s-data-platform`, then `make infra`.
 

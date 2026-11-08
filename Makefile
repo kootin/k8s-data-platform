@@ -10,7 +10,7 @@ help: ## List targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
 
 up: infra image deploy ## Everything: cluster + S3 + Postgres + Airflow
-	@echo "Airflow: http://localhost:8080  user: admin  password: $$(terraform -chdir=terraform output -raw airflow_admin_password)"
+	@echo "Airflow: $$(terraform -chdir=terraform output -raw airflow_url)  user: admin  password: $$(terraform -chdir=terraform output -raw airflow_admin_password)"
 
 infra: ## Terraform: kind cluster, LocalStack, S3 buckets, credentials
 	scripts/infra-up.sh

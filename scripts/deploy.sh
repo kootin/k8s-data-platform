@@ -15,4 +15,4 @@ log "waiting for rollouts"
 kc rollout status statefulset/postgres --timeout=180s
 kc rollout status deployment/airflow-scheduler --timeout=420s
 kc rollout status deployment/airflow-webserver --timeout=420s
-log "deployed. Airflow UI: http://localhost:8080 (user admin, password: make airflow-password)"
+log "deployed. Airflow UI: http://localhost:${TF_VAR_airflow_host_port:-8080} (user admin, password: make airflow-password)"
